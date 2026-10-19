@@ -6,6 +6,8 @@ import { ProductPhoto } from "@/components/Visuals";
 import { lineFor, sortSeries, viewLabel } from "@/lib/copy";
 import { getCatalog, getSeries, type ProductSummary } from "@/lib/api";
 
+export const instant = false;
+
 const facts = [
   { title: "Native 16:9", detail: "Common wall sizes land on 1080 or 4K without scaling." },
   { title: "On camera", detail: "Refresh rates chosen for IMAG, broadcast, and stream." },

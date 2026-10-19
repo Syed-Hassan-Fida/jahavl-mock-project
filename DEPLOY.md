@@ -1,6 +1,8 @@
-# Deploy JAH revamp on an existing DigitalOcean VPS
+# Deploy jahavl-mock-project on an existing DigitalOcean VPS
 
 This guide adds one site next to the projects already on the VPS. It does not edit their nginx files, their databases, or their PM2 apps.
+
+App root on the VPS: `/var/www/jahavl-mock-project`
 
 The public site is Next.js. The API is Laravel. Live updates are a Server-Sent Events stream on its own PHP process, not a WebSocket server. Nginx is the only process that listens on ports 80 and 443 for this domain. The app processes listen on `127.0.0.1` only.
 
@@ -12,25 +14,27 @@ Replace `jah.example.com` with the domain or subdomain you will use for this pro
 - Do not add `default_server` to this site. That would steal requests from other projects.
 - Do not run `pm2 restart all`, `pm2 delete all`, or `pm2 kill`.
 - Do not run `FLUSHALL` on Redis, and do not change the MySQL root account.
-- Do not point this app at an existing database.
+- Do not point this app at an existing database (do not reuse `jahavl_database` or any other live DB).
 
-## 1. Pick three free local ports
+## 1. Ports (chosen to avoid occupied VPS listeners)
 
-Other projects may already use 3000, 8000, or 8002. This setup uses:
+Snapshot of ports already in use on this VPS includes: `3050-3054`, `3100-3111`, `3088`, `3110`, `4416`, `5180`, `8090`, `8765`, `8787`, plus `80`/`443`/`22`/`3306`.
+
+This project uses free ports outside those ranges:
 
 | Process | Port | PM2 name |
 | --- | --- | --- |
-| Next.js | 3015 | `jaha-web` |
-| Laravel API | 8015 | `jaha-api` |
-| Live stream | 8016 | `jaha-live` |
+| Next.js | **3125** | `jahavl-mock-web` |
+| Laravel API | **8125** | `jahavl-mock-api` |
+| Live stream | **8126** | `jahavl-mock-live` |
 
-On the VPS:
+On the VPS, confirm they are still free before starting:
 
 ```bash
-ss -lntp | grep -E '3015|8015|8016' || echo "ports are free"
+ss -lntp | grep -E '3125|8125|8126' || echo "ports are free"
 ```
 
-If any line prints, pick a different free port and change it in all three places: `deploy/ecosystem.config.cjs`, `deploy/jaha-revamp.nginx.conf`, and the frontend build variables below.
+If any line prints, pick different free ports and change them in all three places: `deploy/ecosystem.config.cjs`, `deploy/jahavl-mock-project.nginx.conf`, and re-check nginx after editing.
 
 ## 2. Check what is already installed
 
@@ -66,16 +70,16 @@ rm composer-setup.php
 ## 3. Put the code in its own directory
 
 ```bash
-sudo mkdir -p /var/www/jaha-revamp
-sudo chown "$USER":"$USER" /var/www/jaha-revamp
+sudo mkdir -p /var/www/jahavl-mock-project
+sudo chown "$USER":"$USER" /var/www/jahavl-mock-project
 ```
 
-Copy the `jaha_live_revamp` folder there, or clone it, so the tree is:
+Copy or clone so the tree is:
 
 ```text
-/var/www/jaha-revamp/backend
-/var/www/jaha-revamp/frontend
-/var/www/jaha-revamp/deploy
+/var/www/jahavl-mock-project/backend
+/var/www/jahavl-mock-project/frontend
+/var/www/jahavl-mock-project/deploy
 ```
 
 Do not place it inside another project's directory.
@@ -91,14 +95,14 @@ GRANT ALL PRIVILEGES ON jaha_revamp.* TO 'jaha_revamp'@'127.0.0.1';
 FLUSH PRIVILEGES;
 ```
 
-`jaha_revamp.*` does not grant access to your other databases.
+`jaha_revamp.*` does not grant access to your other databases. Do not point this app at the legacy `jahavl_database`.
 
-The local demo uses SQLite. `php artisan migrate` creates empty tables on MySQL. It does not copy the SQLite catalog, users, or quotes. Running `php artisan db:seed` creates the four `example.com` demo accounts with the password `password`. Do not seed that on a public server unless you change those passwords before anyone can reach the site.
+`php artisan migrate` creates empty tables on MySQL. Running `php artisan db:seed` creates the four `example.com` demo accounts with the password `password`. Do not seed that on a public server unless you change those passwords before anyone can reach the site.
 
 ## 5. Configure the API
 
 ```bash
-cd /var/www/jaha-revamp/backend
+cd /var/www/jahavl-mock-project/backend
 composer install --no-dev --optimize-autoloader
 cp .env.example .env
 php artisan key:generate
@@ -128,7 +132,7 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_DB=8
 REDIS_CACHE_DB=9
-REDIS_PREFIX=jaha-revamp-
+REDIS_PREFIX=jahavl-mock-
 
 SESSION_DRIVER=database
 QUEUE_CONNECTION=database
@@ -142,10 +146,14 @@ Then:
 
 ```bash
 php artisan migrate --force
+php artisan db:seed --force
+php artisan db:seed --class=WorkflowLinksSeeder --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
 ```
+
+Also set CORS for your public domain in `config/cors.php` (`allowed_origins`), then run `php artisan config:cache` again.
 
 `storage:link` only creates a link inside this project.
 
@@ -154,7 +162,7 @@ php artisan route:cache
 `NEXT_PUBLIC_*` values are baked in when Next.js builds. Set them to the public domain, not to `127.0.0.1`. A visitor's browser cannot open a port that is bound only on the VPS.
 
 ```bash
-cd /var/www/jaha-revamp/frontend
+cd /var/www/jahavl-mock-project/frontend
 npm ci
 ```
 
@@ -172,26 +180,26 @@ Both the API and the live stream use the same domain. Nginx sends `/api/v1/live`
 npm run build
 ```
 
-If you change those variables later, run `npm run build` again before restarting `jaha-web`.
+If you change those variables later, run `npm run build` again before restarting `jahavl-mock-web`.
 
 ## 7. Start the three processes with PM2
 
-From `/var/www/jaha-revamp`:
+From `/var/www/jahavl-mock-project`:
 
 ```bash
 pm2 start deploy/ecosystem.config.cjs
 pm2 save
 ```
 
-If `pm2 startup` is already installed for your other apps, do not run it again. `pm2 save` is enough to remember `jaha-web`, `jaha-api`, and `jaha-live`.
+If `pm2 startup` is already installed for your other apps, do not run it again. `pm2 save` is enough to remember `jahavl-mock-web`, `jahavl-mock-api`, and `jahavl-mock-live`.
 
 Check them:
 
 ```bash
 pm2 status
-curl -s -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:3015
-curl -s -o /dev/null -w "api %{http_code}\n" http://127.0.0.1:8015/api/v1/catalog
-curl -s -o /dev/null -w "live %{http_code}\n" http://127.0.0.1:8016/api/v1/live
+curl -s -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:3125
+curl -s -o /dev/null -w "api %{http_code}\n" http://127.0.0.1:8125/api/v1/catalog
+curl -s -o /dev/null -w "live %{http_code}\n" http://127.0.0.1:8126/api/v1/live
 ```
 
 The catalog route should return `200`. The live route should return `401` when called without a token. That means the stream is up.
@@ -199,19 +207,19 @@ The catalog route should return `200`. The live route should return `401` when c
 Later restarts, by name only:
 
 ```bash
-pm2 restart jaha-web
-pm2 restart jaha-api
-pm2 restart jaha-live
+pm2 restart jahavl-mock-web
+pm2 restart jahavl-mock-api
+pm2 restart jahavl-mock-live
 ```
 
 ## 8. Nginx site
 
-The ready file is `deploy/jaha-revamp.nginx.conf`. Copy it and edit `server_name` first.
+The ready file is `deploy/jahavl-mock-project.nginx.conf`. Copy it and edit `server_name` first.
 
 ```bash
-sudo cp /var/www/jaha-revamp/deploy/jaha-revamp.nginx.conf /etc/nginx/sites-available/jaha-revamp
-sudo nano /etc/nginx/sites-available/jaha-revamp
-sudo ln -s /etc/nginx/sites-available/jaha-revamp /etc/nginx/sites-enabled/jaha-revamp
+sudo cp /var/www/jahavl-mock-project/deploy/jahavl-mock-project.nginx.conf /etc/nginx/sites-available/jahavl-mock-project
+sudo nano /etc/nginx/sites-available/jahavl-mock-project
+sudo ln -s /etc/nginx/sites-available/jahavl-mock-project /etc/nginx/sites-enabled/jahavl-mock-project
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -229,7 +237,7 @@ server {
     client_max_body_size 12m;
 
     location /api/v1/live {
-        proxy_pass http://127.0.0.1:8016;
+        proxy_pass http://127.0.0.1:8126;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -244,7 +252,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:8015;
+        proxy_pass http://127.0.0.1:8125;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -254,7 +262,7 @@ server {
     }
 
     location / {
-        proxy_pass http://127.0.0.1:3015;
+        proxy_pass http://127.0.0.1:3125;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -276,7 +284,7 @@ Point DNS for `jah.example.com` at this VPS before the certificate step. Confirm
 sudo certbot --nginx -d jah.example.com
 ```
 
-Pass only this hostname. Certbot will add the 443 server block to `/etc/nginx/sites-available/jaha-revamp`. It should not rewrite your other site files.
+Pass only this hostname. Certbot will add the 443 server block to `/etc/nginx/sites-available/jahavl-mock-project`. It should not rewrite your other site files.
 
 After the certificate exists, open `https://jah.example.com` and `https://jah.example.com/api/v1/catalog`.
 
@@ -287,12 +295,12 @@ pm2 status
 sudo nginx -t
 ```
 
-Open one of the existing sites in a browser. If it still loads, this site did not take its server block. If an old site fails, the usual cause is a duplicated `server_name` or a `default_server` flag. Remove those from the JAH file only, then `sudo nginx -t` and `sudo systemctl reload nginx`.
+Open one of the existing sites in a browser. If it still loads, this site did not take its server block. If an old site fails, the usual cause is a duplicated `server_name` or a `default_server` flag. Remove those from the jahavl-mock-project file only, then `sudo nginx -t` and `sudo systemctl reload nginx`.
 
 ## Updating later
 
 ```bash
-cd /var/www/jaha-revamp
+cd /var/www/jahavl-mock-project
 # pull or copy the new code
 
 cd backend
@@ -300,13 +308,13 @@ composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
-pm2 restart jaha-api
-pm2 restart jaha-live
+pm2 restart jahavl-mock-api
+pm2 restart jahavl-mock-live
 
 cd ../frontend
 npm ci
 npm run build
-pm2 restart jaha-web
+pm2 restart jahavl-mock-web
 ```
 
 ## Phone app

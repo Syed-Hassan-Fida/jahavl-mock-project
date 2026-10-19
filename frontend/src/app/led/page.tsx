@@ -5,6 +5,8 @@ import { WallPlanner } from "@/components/WallPlanner";
 import { sortSeries } from "@/lib/copy";
 import { getCatalog, getSeries } from "@/lib/api";
 
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "LED walls",
   description: "Plan a JAH LED wall from the cabinet lines in this sample catalog.",

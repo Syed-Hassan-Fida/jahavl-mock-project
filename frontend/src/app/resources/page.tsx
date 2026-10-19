@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Resources",
   description: "Spec sheets, product photos, and series pages for JAH Audio equipment.",
