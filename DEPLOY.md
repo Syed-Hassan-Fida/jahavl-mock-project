@@ -6,7 +6,7 @@ App root on the VPS: `/var/www/jahavl-mock-project`
 
 The public site is Next.js. The API is Laravel. Live updates are a Server-Sent Events stream on its own PHP process, not a WebSocket server. Nginx is the only process that listens on ports 80 and 443 for this domain. The app processes listen on `127.0.0.1` only.
 
-Replace `jah.example.com` with the domain or subdomain you will use for this project. A subdomain is the safest choice when other sites already use the apex domain.
+Public domain for this deploy: `jahavl.hivelyhr.com`.
 
 ## What stays untouched
 
@@ -114,7 +114,7 @@ Edit `.env`. Keep the file on the server. Do not commit it.
 APP_NAME=JAH
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://jah.example.com
+APP_URL=https://jahavl.hivelyhr.com
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -169,9 +169,9 @@ npm ci
 Create `frontend/.env.production`:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://jah.example.com
-NEXT_PUBLIC_API_URL=https://jah.example.com
-NEXT_PUBLIC_LIVE_URL=https://jah.example.com
+NEXT_PUBLIC_SITE_URL=https://jahavl.hivelyhr.com
+NEXT_PUBLIC_API_URL=https://jahavl.hivelyhr.com
+NEXT_PUBLIC_LIVE_URL=https://jahavl.hivelyhr.com
 ```
 
 Both the API and the live stream use the same domain. Nginx sends `/api/v1/live` to the stream process and every other `/api/` request to the API process.
@@ -232,7 +232,7 @@ Full site file:
 server {
     listen 80;
     listen [::]:80;
-    server_name jah.example.com;
+    server_name jahavl.hivelyhr.com;
 
     client_max_body_size 12m;
 
@@ -276,17 +276,17 @@ server {
 
 `/api/v1/live` is listed before `/api/` on purpose. Nginx uses the longer match for the stream and leaves normal API calls on the API process. The stream must not be buffered, or the browser will sit until the whole response ends.
 
-Point DNS for `jah.example.com` at this VPS before the certificate step. Confirm no other file in `sites-enabled` already uses that exact `server_name`.
+Point DNS for `jahavl.hivelyhr.com` at this VPS before the certificate step. Confirm no other file in `sites-enabled` already uses that exact `server_name`.
 
 ## 9. HTTPS for this domain only
 
 ```bash
-sudo certbot --nginx -d jah.example.com
+sudo certbot --nginx -d jahavl.hivelyhr.com
 ```
 
 Pass only this hostname. Certbot will add the 443 server block to `/etc/nginx/sites-available/jahavl-mock-project`. It should not rewrite your other site files.
 
-After the certificate exists, open `https://jah.example.com` and `https://jah.example.com/api/v1/catalog`.
+After the certificate exists, open `https://jahavl.hivelyhr.com` and `https://jahavl.hivelyhr.com/api/v1/catalog`.
 
 ## 10. Confirm the other projects
 
@@ -319,4 +319,4 @@ pm2 restart jahavl-mock-web
 
 ## Phone app
 
-This guide does not publish the Expo app. The phone client in `mobile/src/api.ts` still calls `http://127.0.0.1:8000` and loads images from `http://127.0.0.1:3000`. Those values are for the machine running the demo. Point them at `https://jah.example.com` only when you build a phone release.
+This guide does not publish the Expo app. The phone client in `mobile/src/api.ts` still calls `http://127.0.0.1:8000` and loads images from `http://127.0.0.1:3000`. Those values are for the machine running the demo. Point them at `https://jahavl.hivelyhr.com` only when you build a phone release.
