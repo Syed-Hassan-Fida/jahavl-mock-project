@@ -297,19 +297,53 @@ sudo nginx -t
 
 Open one of the existing sites in a browser. If it still loads, this site did not take its server block. If an old site fails, the usual cause is a duplicated `server_name` or a `default_server` flag. Remove those from the jahavl-mock-project file only, then `sudo nginx -t` and `sudo systemctl reload nginx`.
 
-## Updating later
+## Updating later (must-run commands)
+
+Copy or `git pull` new code into `/var/www/jahavl-mock-project` first.
+
+### Backend only (API / PHP / migrations)
 
 ```bash
-cd /var/www/jahavl-mock-project
-# pull or copy the new code
-
-cd backend
+cd /var/www/jahavl-mock-project/backend
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
+php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 pm2 restart jahavl-mock-api
 pm2 restart jahavl-mock-live
+```
+
+If you changed `.env`, always run `config:clear` then `config:cache` before restarting.
+
+### Frontend only (Next.js)
+
+`NEXT_PUBLIC_*` values are baked at **build** time. If the domain or API URL changed, update `frontend/.env.production` before building.
+
+```bash
+cd /var/www/jahavl-mock-project/frontend
+# optional if deps changed: npm ci
+npm run build
+pm2 restart jahavl-mock-web
+```
+
+Confirm:
+
+```bash
+curl -s -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:3125/
+curl -s -o /dev/null -w "api %{http_code}\n" http://127.0.0.1:8125/api/v1/catalog
+```
+
+### Backend + frontend together
+
+```bash
+cd /var/www/jahavl-mock-project
+
+cd backend
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:clear && php artisan config:cache && php artisan route:cache
+pm2 restart jahavl-mock-api jahavl-mock-live
 
 cd ../frontend
 npm ci
@@ -317,6 +351,17 @@ npm run build
 pm2 restart jahavl-mock-web
 ```
 
-## Phone app
+### Mobile app (after API URL / feature changes)
 
-This guide does not publish the Expo app. The phone client in `mobile/src/api.ts` still calls `http://127.0.0.1:8000` and loads images from `http://127.0.0.1:3000`. Those values are for the machine running the demo. Point them at `https://jahavl.hivelyhr.com` only when you build a phone release.
+Local project path: `jaha_live_revamp/mobile`. URLs live in `mobile/src/api.ts` and currently point at `https://jahavl.hivelyhr.com`.
+
+```bash
+cd mobile
+# edit src/api.ts if the public domain changed
+npx eas build -p android --profile preview   # produces installable APK
+npx eas build -p ios --profile preview       # produces IPA (needs Apple Developer account)
+```
+
+There is no iOS “APK”. Android installs via APK; iOS needs IPA + TestFlight / Ad Hoc / Apple ID signing.
+
+See `mobile/README.md` for install steps.

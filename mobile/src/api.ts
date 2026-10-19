@@ -1,8 +1,8 @@
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
-export const API_URL = "http://127.0.0.1:8000";
-export const WEB_URL = "http://127.0.0.1:3000";
+export const API_URL = "https://jahavl.hivelyhr.com";
+export const WEB_URL = "https://jahavl.hivelyhr.com";
 
 export function media(path?: string | null) {
   if (!path) return null;
