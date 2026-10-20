@@ -1,5 +1,7 @@
 # JAH Audio mobile (Expo)
 
+EAS project id: `a8a27ce5-c0f6-47df-bc3f-f9efa53c268c` (in `app.json` → `extra.eas.projectId`)
+
 API and media URLs are set in `src/api.ts`:
 
 ```ts
@@ -7,12 +9,20 @@ export const API_URL = "https://jahavl.hivelyhr.com";
 export const WEB_URL = "https://jahavl.hivelyhr.com";
 ```
 
-## Quick test on a phone (no APK)
+## Connect Expo account (one time)
 
-1. Phone and Mac on same network, or use Expo tunnel.
-2. From `mobile/`: `npx expo start`
-3. Scan QR with Expo Go (Android) or Camera (iOS).
-4. App talks to the live site above — backend must be up.
+```bash
+cd mobile
+npx eas-cli@latest login
+npx eas-cli@latest init --id a8a27ce5-c0f6-47df-bc3f-f9efa53c268c
+```
+
+## Quick test on a phone (Expo Go)
+
+1. Install Expo Go (App Store / Play Store).
+2. From `mobile/`: `npx expo start` (or `npx expo start --tunnel` off same Wi‑Fi).
+3. Scan the QR code.
+4. App talks to `https://jahavl.hivelyhr.com` — site must be up.
 
 ## Build installable Android APK
 

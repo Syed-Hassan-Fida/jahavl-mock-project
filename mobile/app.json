@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "JAH Audio",
-    "slug": "jahavl-mock",
+    "slug": "jahavl",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,6 +28,12 @@
     },
     "plugins": [
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a8a27ce5-c0f6-47df-bc3f-f9efa53c268c"
+      }
+    },
+    "owner": "hassanfidas-team"
   }
 }
