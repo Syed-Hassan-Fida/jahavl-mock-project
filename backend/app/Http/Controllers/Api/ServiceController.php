@@ -175,6 +175,7 @@ class ServiceController extends Controller
                 'recipient_id' => $message->recipient_id,
                 'created_at' => $message->created_at,
                 'has_attachment' => (bool) $message->attachment_path,
+                'attachment' => Uploads::describe($message->attachment_path),
             ]),
         ]);
     }
@@ -196,24 +197,20 @@ class ServiceController extends Controller
             'attachment_path' => $request->file('file') ? Uploads::store($request->file('file'), 'chat') : null,
         ]);
         Notifier::toUser((int) $data['recipient_id'], 'New message', $request->user()->name.' sent a message.');
-        Live::toUsers([$message->sender_id, $message->recipient_id], 'message', [
-            'message' => [
-                'id' => $message->id,
-                'body' => $message->body,
-                'sender_id' => $message->sender_id,
-                'recipient_id' => $message->recipient_id,
-                'has_attachment' => (bool) $message->attachment_path,
-            ],
-        ]);
-
-        return response()->json(['message' => [
+        $payload = [
             'id' => $message->id,
             'body' => $message->body,
             'sender_id' => $message->sender_id,
             'recipient_id' => $message->recipient_id,
             'created_at' => $message->created_at,
             'has_attachment' => (bool) $message->attachment_path,
-        ]], 201);
+            'attachment' => Uploads::describe($message->attachment_path),
+        ];
+        Live::toUsers([$message->sender_id, $message->recipient_id], 'message', [
+            'message' => $payload,
+        ]);
+
+        return response()->json(['message' => $payload], 201);
     }
 
     public function messageFile(Request $request, Message $message)
@@ -409,6 +406,7 @@ class ServiceController extends Controller
                 'body' => $event->body,
                 'status' => $event->status,
                 'has_attachment' => (bool) $event->attachment_path,
+                'attachment' => Uploads::describe($event->attachment_path),
                 'author' => $event->user?->name,
                 'created_at' => $event->created_at,
                 'notes' => $event->notes->map(fn ($note) => [
@@ -457,6 +455,9 @@ class ServiceController extends Controller
                 'body' => $event->body,
                 'author' => $author,
                 'status' => $event->status,
+                'created_at' => $event->created_at,
+                'has_attachment' => (bool) $event->attachment_path,
+                'attachment' => Uploads::describe($event->attachment_path),
             ],
         ]);
     }

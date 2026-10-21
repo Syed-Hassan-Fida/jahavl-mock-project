@@ -36,7 +36,9 @@ export default function LoginPage() {
     }
     localStorage.setItem("jah_token", body.token);
     localStorage.setItem("jah_user", JSON.stringify(body.user));
-    router.push(body.user.role === "admin" || body.user.role === "sales" ? "/admin" : "/account");
+    const next = new URLSearchParams(window.location.search).get("next");
+    const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+    router.push(safe ?? (body.user.role === "admin" || body.user.role === "sales" ? "/admin" : "/account"));
   }
 
   return (
@@ -57,14 +59,14 @@ export default function LoginPage() {
               <p className="mt-3 text-sm text-mist">Use the account you were given for this demo.</p>
               <label className="mt-6 grid gap-1.5 text-sm font-semibold">
                 Email
-                <input name="email" type="email" required autoComplete="username" className="field font-normal" />
+                <input name="email" type="email" required autoComplete="username" aria-invalid={error ? true : undefined} className="field font-normal" />
               </label>
               <label className="mt-4 grid gap-1.5 text-sm font-semibold">
                 Password
-                <input name="password" type="password" required autoComplete="current-password" className="field font-normal" />
+                <input name="password" type="password" required autoComplete="current-password" aria-invalid={error ? true : undefined} className="field font-normal" />
               </label>
-              {error ? <p className="mt-4 text-sm text-copper">{error}</p> : null}
-              <button type="submit" disabled={pending} className="mt-6 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-cream hover:bg-black disabled:opacity-60">
+              {error ? <p className="mt-4 text-sm text-copper" role="alert">{error}</p> : null}
+              <button type="submit" disabled={pending} className="btn btn-primary mt-6">
                 {pending ? "Signing in…" : "Continue"}
               </button>
               <p className="mt-5 text-sm text-mist">

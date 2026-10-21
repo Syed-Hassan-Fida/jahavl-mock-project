@@ -20,7 +20,12 @@ class CatalogAdminController extends Controller
         $term = trim((string) $request->query('q', ''));
         $products = Product::query()
             ->with('series:id,name')
-            ->when($term !== '', fn ($query) => $query->where('name', 'like', '%'.$term.'%'))
+            ->when($term !== '', function ($query) use ($term) {
+                $like = '%'.addcslashes(mb_strtolower($term), '%_\\').'%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(slug) like ?', [$like]);
+                });
+            })
             ->orderBy('name')
             ->limit(500)
             ->get();

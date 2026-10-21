@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { FormEvent, Fragment, useEffect, useState } from "react";
 import { Icon, IconButton } from "@/components/Icons";
 import { WorkspaceShell } from "@/components/workspace/Shell";
+import { ConfirmDialog, toast } from "@/components/ui";
 import { API_URL, money } from "@/lib/api";
 import { api, authHeaders } from "@/lib/client";
 
@@ -64,6 +65,7 @@ export default function QuotePage() {
   const [hits, setHits] = useState<Hit[]>([]);
   const [methods, setMethods] = useState<{ id: number; type: string; brand: string | null; last4: string }[]>([]);
   const [packageLines, setPackageLines] = useState<{ product_id: number; quantity: number; name: string }[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function load() {
     const body = await api<{ quote: Quote }>(`/api/v1/quotes/${params.id}`);
@@ -257,7 +259,7 @@ export default function QuotePage() {
                 </div>
               ) : null}
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-2">
                 {quote.permissions.submit ? <button className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream" onClick={() => act(`/api/v1/quotes/${quote.id}/submit`)}>Submit for review</button> : null}
                 {quote.permissions.revise ? <button className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream" onClick={() => act(`/api/v1/quotes/${quote.id}/revise`)}>Revise and reopen</button> : null}
                 {quote.permissions.review ? (
@@ -274,13 +276,13 @@ export default function QuotePage() {
                 ) : null}
                 {quote.permissions.purchased ? <button className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream" onClick={() => act(`/api/v1/quotes/${quote.id}/purchased`)}>Mark purchased</button> : null}
                 {quote.permissions.expire ? <button className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold" onClick={() => act(`/api/v1/quotes/${quote.id}/expire`)}>Mark expired</button> : null}
-                {quote.permissions.delete ? <button className="inline-flex items-center gap-2 rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-copper" onClick={async () => { await api(`/api/v1/quotes/${quote.id}`, { method: "DELETE" }); router.push("/account/quotes"); }}><Icon name="trash" /> Delete quote</button> : null}
-                <button className="inline-flex items-center gap-2 rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold" onClick={openPdf}><Icon name="download" /> Open PDF</button>
-                <Link href="/account" className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold">Back to quotes</Link>
+                {quote.permissions.delete ? <button type="button" className="btn btn-secondary text-copper" onClick={() => setConfirmDelete(true)}><Icon name="trash" /> Delete quote</button> : null}
+                <button type="button" className="btn btn-secondary" onClick={openPdf}><Icon name="download" /> Open PDF</button>
+                <Link href="/account/quotes" className="btn btn-secondary">Back to quotes</Link>
               </div>
 
               {quote.permissions.assign ? (
-                <form className="mt-4 grid gap-3 rounded-3xl border border-line bg-paper p-5 sm:grid-cols-3" onSubmit={(event) => {
+                <form className="panel mt-4 p-5" onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
                   if (people.length === 0) {
@@ -296,8 +298,11 @@ export default function QuotePage() {
                     dealer_user_id: value("dealer_user_id"),
                   });
                 }}>
-                  <h2 className="text-3xl sm:col-span-3">Assign</h2>
-                  {people.length === 0 ? <button type="button" className="text-sm font-semibold text-copper" onClick={() => api<{ users: Person[] }>("/api/v1/people").then((body) => setPeople(body.users))}>Load accounts</button> : null}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-3xl">Assign</h2>
+                    {people.length === 0 ? <button type="button" className="btn btn-secondary" onClick={() => api<{ users: Person[] }>("/api/v1/people").then((body) => setPeople(body.users))}>Load accounts</button> : null}
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
                   <label className="grid gap-1 text-sm font-semibold">Client or dealer
                     <select name="assigned_user_id" className="field font-normal" defaultValue={quote.assigned_to?.id ?? ""}>
                       <option value="">Unassigned</option>
@@ -316,7 +321,8 @@ export default function QuotePage() {
                       {people.filter((person) => person.role === "dealer").map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
                     </select>
                   </label>
-                  <button className="w-fit rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream">Save assignment</button>
+                  </div>
+                  <button className="btn btn-primary mt-4">Save assignment</button>
                 </form>
               ) : null}
 
@@ -340,17 +346,17 @@ export default function QuotePage() {
               ) : null}
 
               {quote.permissions.manual_pay ? (
-                <form className="mt-4 rounded-3xl border border-line bg-paper p-5" onSubmit={(event) => {
+                <form className="panel mt-4 p-5" onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
                   act(`/api/v1/quotes/${quote.id}/manual-payment`, { amount: form.get("amount"), note: form.get("note") });
                 }}>
                   <h2 className="text-3xl">Manual payment</h2>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <input name="amount" required placeholder="Amount" className="field font-normal" />
-                    <input name="note" placeholder="Check or wire note" className="field font-normal" />
+                    <label className="grid gap-1 text-sm font-semibold">Amount<input name="amount" required type="number" min="0.01" step="0.01" className="field font-normal" /></label>
+                    <label className="grid gap-1 text-sm font-semibold">Note<input name="note" placeholder="Check or wire" className="field font-normal" /></label>
                   </div>
-                  <button className="mt-4 rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold">Record payment</button>
+                  <button className="btn btn-secondary mt-4">Record payment</button>
                 </form>
               ) : null}
 
@@ -372,7 +378,8 @@ export default function QuotePage() {
               ) : null}
             </>
           ) : null}
-      </div>
+        </div>
+      <ConfirmDialog open={confirmDelete} title="Delete this quote?" body="The quote and its lines will be removed. This cannot be undone." confirmLabel="Delete quote" onClose={() => setConfirmDelete(false)} onConfirm={async () => { if (!quote) return; setConfirmDelete(false); await api(`/api/v1/quotes/${quote.id}`, { method: "DELETE" }); toast("Quote deleted.", "success"); router.push("/account/quotes"); }} />
     </WorkspaceShell>
   );
 }

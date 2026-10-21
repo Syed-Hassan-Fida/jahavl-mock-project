@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Icon } from "@/components/Icons";
 import { WorkspaceShell } from "@/components/workspace/Shell";
+import { Banner, EmptyState, Pager, SkeletonBlock, StatusBadge } from "@/components/ui";
 import { money } from "@/lib/api";
 import { api } from "@/lib/client";
 
@@ -12,7 +13,7 @@ type Quote = { id: number; name: string; type: string; status: string; status_co
 
 export default function QuotesPage() {
   return (
-    <Suspense fallback={<WorkspaceShell title="Quotes"><p className="text-sm text-mist">Loading quotes…</p></WorkspaceShell>}>
+    <Suspense fallback={<WorkspaceShell title="Quotes"><SkeletonBlock className="h-64" /></WorkspaceShell>}>
       <QuoteList />
     </Suspense>
   );
@@ -23,6 +24,8 @@ function QuoteList() {
   const wishlist = params.get("type") === "wishlist";
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     api<{ quotes: Quote[] }>("/api/v1/quotes")
@@ -31,6 +34,7 @@ function QuoteList() {
   }, []);
 
   const rows = (quotes ?? []).filter((quote) => quote.type === (wishlist ? "wishlist" : "quote"));
+  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
 
   async function create() {
     const body = await api<{ quote: { id: number } }>("/api/v1/quotes", {
@@ -42,35 +46,46 @@ function QuoteList() {
 
   return (
     <WorkspaceShell title={wishlist ? "Wishlists" : "Quotes"} description={wishlist ? "Save products, then convert a list into a quote when you are ready." : "Every quote you can see, with status and checkout."}>
-      {error ? <p className="mb-4 text-sm text-copper">{error}</p> : null}
-      <div className="mb-4 flex justify-end">
-        <button type="button" onClick={create} className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream">
+      {error ? <div className="mb-4"><Banner tone="error">{error}</Banner></div> : null}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-mist">{quotes === null ? "Loading…" : `${rows.length} ${wishlist ? "wishlist" : "quote"}${rows.length === 1 ? "" : "s"}`}</p>
+        <button type="button" onClick={create} className="btn btn-primary">
           <Icon name="plus" />
           {wishlist ? "New wishlist" : "New quote"}
         </button>
       </div>
-      {quotes === null ? <p className="text-sm text-mist">Loading…</p> : null}
-      {quotes && rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-line bg-paper px-5 py-10">
-          <p className="font-semibold">{wishlist ? "No wishlists" : "No quotes in this view"}</p>
-          <p className="mt-1 text-sm text-mist">Add a product from the catalog, or start a blank {wishlist ? "wishlist" : "quote"}.</p>
+      {quotes === null ? (
+        <div className="grid gap-2" aria-busy="true" aria-live="polite">
+          <span className="sr-only">Loading quotes</span>
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
         </div>
       ) : null}
+      {quotes && rows.length === 0 ? (
+        <EmptyState
+          title={wishlist ? "No wishlists" : "No quotes yet"}
+          body={`Add a product from the catalog, or start a blank ${wishlist ? "wishlist" : "quote"}.`}
+          action={<Link href="/led" className="btn btn-secondary">Browse the catalog</Link>}
+        />
+      ) : null}
       {rows.length ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-paper">
-          {rows.map((quote) => (
+        <ul className="panel divide-y divide-line overflow-hidden">
+          {visible.map((quote) => (
             <li key={quote.id}>
-              <Link href={`/quotes/${quote.id}`} className="grid gap-1 px-4 py-3 hover:bg-foam sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+              <Link href={`/quotes/${quote.id}`} className="grid min-h-16 items-center gap-2 px-4 py-3 hover:bg-foam sm:grid-cols-[minmax(0,1.3fr)_auto_auto] sm:gap-4 sm:px-5">
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{quote.name}</span>
-                  <span className="mt-0.5 block text-sm capitalize text-mist">{quote.owner ?? "You"} · {quote.status} · {quote.status_code}{quote.checkout_allowed ? " · checkout open" : ""}</span>
+                  <span className="mt-0.5 block text-sm text-mist">{quote.owner ?? "You"} · status {quote.status_code}{quote.checkout_allowed ? " · checkout open" : ""}</span>
                 </span>
+                <StatusBadge status={quote.status} />
                 <span className="text-sm font-semibold tabular-nums sm:text-right">{money(quote.total)}</span>
               </Link>
             </li>
           ))}
         </ul>
       ) : null}
+      {quotes && rows.length ? <Pager page={page} pageSize={pageSize} total={rows.length} onPage={setPage} onPageSize={setPageSize} /> : null}
     </WorkspaceShell>
   );
 }

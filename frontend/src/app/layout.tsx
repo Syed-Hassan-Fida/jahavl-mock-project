@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, Source_Sans_3 } from "next/font/google";
+import { Instrument_Serif, Inter } from "next/font/google";
 import "./globals.css";
 
-const source = Source_Sans_3({
+const source = Inter({
   variable: "--font-source",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const barlow = Barlow_Condensed({
+const barlow = Instrument_Serif({
   variable: "--font-barlow",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {

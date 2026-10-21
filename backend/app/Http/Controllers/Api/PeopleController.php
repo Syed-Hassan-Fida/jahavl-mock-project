@@ -36,7 +36,7 @@ class PeopleController extends Controller
         }
 
         return response()->json([
-            'users' => $query->get(['id', 'name', 'email', 'role', 'company_name', 'phone', 'sales_tax_percent', 'tax_status', 'monthly_target', 'yearly_target', 'bio']),
+            'users' => $query->get(['id', 'name', 'email', 'role', 'company_name', 'phone', 'sales_tax_percent', 'tax_status', 'monthly_target', 'yearly_target', 'bio', 'created_at']),
         ]);
     }
 

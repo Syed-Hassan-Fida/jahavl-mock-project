@@ -92,13 +92,13 @@ export function ProfileMenu({ tone = "light" }: { tone?: "light" | "dark" }) {
       <button
         ref={buttonRef}
         type="button"
-        className={`flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition ${light ? "hover:bg-foam" : "hover:bg-white/10"}`}
+        className={`flex min-h-11 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition ${light ? "hover:bg-foam" : "hover:bg-white/10"}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-ink text-xs font-semibold text-cream" aria-hidden>
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-ink text-xs font-semibold text-cream" aria-hidden>
           {initials(user.name)}
         </span>
         <span className={`hidden text-left leading-tight sm:block ${light ? "text-ink" : "text-cream"}`}>

@@ -6,7 +6,7 @@ export function ProductCard({ product, fallback }: { product: ProductSummary; fa
   const chips = [product.pitch, product.brightness, product.refresh_hz ? `${product.refresh_hz.toLocaleString()} Hz` : null].filter(Boolean);
 
   return (
-    <Link href={`/products/${product.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-paper ring-1 ring-line transition-shadow duration-300 hover:shadow-[0_18px_40px_rgb(12_14_18/0.12)]">
+    <Link href={`/products/${product.slug}`} className="group flex h-full flex-col overflow-hidden rounded-[20px] bg-white ring-1 ring-line transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgb(12_14_18/0.12)]">
       <ProductPhoto src={product.image} alt={product.name} fallback={fallback} className="rounded-none" />
       <div className="flex flex-1 flex-col p-5">
         {product.series?.name ? <p className="text-[11px] font-semibold tracking-[0.16em] text-copper">{product.series.name.toUpperCase()}</p> : null}

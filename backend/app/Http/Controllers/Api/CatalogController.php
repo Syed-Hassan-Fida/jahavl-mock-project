@@ -139,17 +139,17 @@ class CatalogController extends Controller
             return response()->json(['results' => []]);
         }
 
-        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $term);
         $contains = '%'.$escaped.'%';
         $prefix = $escaped.'%';
         $word = '% '.$escaped.'%';
-        $rank = "case when lower(name) = ? then 0 when lower(name) like ? escape '\\' then 1 when lower(name) like ? escape '\\' then 2 else 3 end";
+        $rank = "case when lower(name) = ? then 0 when lower(name) like ? escape '!' then 1 when lower(name) like ? escape '!' then 2 else 3 end";
 
         $products = Product::query()
             ->where('is_published', true)
             ->where(function ($query) use ($contains) {
-                $query->whereRaw("lower(name) like ? escape '\\'", [$contains])
-                    ->orWhereRaw("lower(slug) like ? escape '\\'", [$contains]);
+                $query->whereRaw("lower(name) like ? escape '!'", [$contains])
+                    ->orWhereRaw("lower(slug) like ? escape '!'", [$contains]);
             })
             ->orderByRaw($rank, [$term, $prefix, $word])
             ->orderBy('name')
@@ -158,7 +158,7 @@ class CatalogController extends Controller
 
         $quotes = Quote::query()
             ->visibleTo($request->user())
-            ->whereRaw("lower(name) like ? escape '\\'", [$contains])
+            ->whereRaw("lower(name) like ? escape '!'", [$contains])
             ->orderByRaw($rank, [$term, $prefix, $word])
             ->latest('id')
             ->limit(6)

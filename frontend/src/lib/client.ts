@@ -44,6 +44,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const text = await response.text();
   const body = text ? JSON.parse(text) : {};
+  if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    clearSession();
+    const next = `${window.location.pathname}${window.location.search}`;
+    window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+    return new Promise(() => undefined) as Promise<T>;
+  }
   if (!response.ok) {
     const message = body.message || firstError(body.errors) || "That request did not go through.";
     throw new Error(message);

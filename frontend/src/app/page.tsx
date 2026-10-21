@@ -70,7 +70,7 @@ export default async function HomePage() {
           <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:py-8">
             <div>
               <p className="text-xs font-semibold tracking-[0.22em] text-copper">HOUSES OF WORSHIP · VENUES · TOURING</p>
-              <h1 className="mt-4 max-w-xl text-5xl text-cream sm:text-6xl lg:text-7xl">Equipment built for the room and the camera.</h1>
+              <h1 className="mt-4 max-w-2xl text-5xl text-cream sm:text-6xl lg:text-7xl">Equipment built for the room and the camera.</h1>
               <p className="mt-6 max-w-md text-lg leading-relaxed text-haze">
                 JAH designs its own LED, lighting, and audio so a ministry or integrator can specify one system and quote it without hunting across brands.
               </p>

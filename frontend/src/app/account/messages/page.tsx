@@ -2,13 +2,14 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace/Shell";
+import { AttachmentCard, type AttachmentFile } from "@/components/ui";
 import { Icon, IconButton } from "@/components/Icons";
 import { API_URL } from "@/lib/api";
 import { api, authHeaders, sessionUser } from "@/lib/client";
 import { idempotencyKey, type LiveEvent } from "@/lib/live";
 
 type Contact = { id: number; name: string; role: string; unread?: number };
-type Message = { id: number; body: string; sender_id: number; created_at?: string; has_attachment?: boolean };
+type Message = { id: number; body: string; sender_id: number; created_at?: string; has_attachment?: boolean; attachment?: AttachmentFile | null };
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
@@ -162,23 +163,16 @@ export default function MessagesPage() {
                   return (
                     <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[min(28rem,85%)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${mine ? "bg-ink text-cream" : "bg-foam text-ink"}`}>
-                        <p className="whitespace-pre-wrap">{message.body}</p>
-                        <p className={`mt-1 flex items-center gap-2 text-[11px] ${mine ? "text-haze" : "text-mist"}`}>
-                          <span>{when(message.created_at)}</span>
-                          {message.has_attachment ? (
-                            <button type="button" className="inline-flex items-center gap-1 font-semibold underline" onClick={() => openFile(message.id)}>
-                              <Icon name="download" className="h-3.5 w-3.5" />
-                              File
-                            </button>
-                          ) : null}
-                        </p>
+                        {message.body && message.body !== "Attachment" ? <p className="whitespace-pre-wrap">{message.body}</p> : null}
+                        {message.has_attachment ? <AttachmentCard file={message.attachment ?? { name: "Attachment" }} onOpen={() => openFile(message.id)} /> : null}
+                        <p className={`mt-1 text-[11px] ${mine ? "text-haze" : "text-mist"}`}>{when(message.created_at)}</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
               <form onSubmit={send} className="border-t border-line p-3">
-                {fileName ? <p className="mb-2 truncate px-1 text-xs text-mist">{fileName}</p> : null}
+                {fileName ? <AttachmentCard file={{ name: fileName }} onRemove={() => { setFileName(null); const input = document.querySelector<HTMLInputElement>('input[name="file"]'); if (input) input.value = ""; }} /> : null}
                 <div className="flex items-center gap-2">
                   <label className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full text-ink hover:bg-foam">
                     <span className="sr-only">Attach a file</span>

@@ -6,7 +6,7 @@ export type LiveEvent = {
   id: number;
   name: "message" | "ticket" | "notification" | string;
   payload: {
-    message?: { id: number; body: string; sender_id: number; recipient_id: number };
+    message?: { id: number; body: string; sender_id: number; recipient_id: number; created_at?: string; has_attachment?: boolean; attachment?: { name: string; bytes?: number | null } | null };
     ticket?: { id: number; subject: string; status: string };
     event?: { id: number; body: string; author: string; status?: string };
     notification?: { id: number; title: string; body: string; read_at: string | null };

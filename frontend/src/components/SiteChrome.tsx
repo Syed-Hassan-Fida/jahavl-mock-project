@@ -32,6 +32,19 @@ export function SiteHeader() {
   const [workspace, setWorkspace] = useState<string | null>(null);
 
   useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  useEffect(() => {
     const raw = localStorage.getItem("jah_user");
     if (!raw) {
       setWorkspace(null);
@@ -46,9 +59,12 @@ export function SiteHeader() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-night/95 backdrop-blur">
-      <p className="bg-copper px-4 py-2 text-center text-xs font-semibold tracking-[0.08em] text-cream">
-        Concept demo · sample catalog · not live jahavl.com
+    <>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-night/90 backdrop-blur-xl">
+      <p className="border-b border-white/10 bg-[#08090c] px-4 py-2 text-center text-[11px] font-medium tracking-[0.14em] text-haze">
+        <span className="text-ember">Concept demo</span>
+        <span className="mx-2 text-white/25" aria-hidden>·</span>
+        Sample catalog · not live jahavl.com
       </p>
       <a
         href="#main"
@@ -56,15 +72,15 @@ export function SiteHeader() {
       >
         Skip to content
       </a>
-      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-6 px-5">
+      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-8 px-5">
         <Link href="/" aria-label="JAH Audio home" onClick={() => setOpen(false)}>
           <Mark />
         </Link>
-        <nav className="hidden items-center gap-5 text-sm text-haze lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-7 text-sm text-haze lg:flex" aria-label="Primary">
           {links.map((link) => {
             const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
-              <Link key={link.href} href={link.href} className={`whitespace-nowrap ${active ? "text-cream" : "text-haze transition-colors hover:text-cream"}`} aria-current={active ? "page" : undefined}>
+              <Link key={link.href} href={link.href} className={`whitespace-nowrap border-b pb-0.5 transition-colors ${active ? "border-ember text-cream" : "border-transparent text-haze hover:text-cream"}`} aria-current={active ? "page" : undefined}>
                 {link.label}
               </Link>
             );
@@ -73,13 +89,13 @@ export function SiteHeader() {
         <div className="hidden items-center gap-4 lg:flex">
           {workspace ? <Link href={workspace} className="text-sm text-haze hover:text-cream">Workspace</Link> : null}
           <ProfileMenu tone="dark" />
-          <Link href="/contact" className="press rounded-full bg-cream px-4 py-2 text-sm font-semibold text-ink hover:bg-white">
+          <Link href="/contact" className="press inline-flex min-h-11 items-center rounded-full bg-cream px-4 text-sm font-semibold text-ink hover:bg-white">
             Request a quote
           </Link>
         </div>
         <button
           type="button"
-          className="grid h-10 w-10 place-items-center rounded-full border border-white/15 text-cream lg:hidden"
+          className="grid h-11 w-11 place-items-center rounded-full border border-white/15 text-cream lg:hidden"
           aria-expanded={open}
           aria-controls="mobile-nav"
           onClick={() => setOpen((value) => !value)}
@@ -90,29 +106,37 @@ export function SiteHeader() {
           </span>
         </button>
       </div>
+    </header>
       {open ? (
-        <nav id="mobile-nav" className="border-t border-white/10 px-5 py-4 lg:hidden" aria-label="Mobile">
-          <ul className="grid gap-1">
+        <nav id="mobile-nav" className="fixed inset-0 z-50 flex flex-col bg-night px-6 pt-6 lg:hidden" aria-label="Mobile">
+          <div className="flex items-center justify-between">
+            <Link href="/" aria-label="JAH Audio home" onClick={() => setOpen(false)}>
+              <Mark />
+            </Link>
+            <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-white/15 text-cream" onClick={() => setOpen(false)}>
+              <span className="sr-only">Close menu</span>
+              <span aria-hidden className="text-lg leading-none">×</span>
+            </button>
+          </div>
+          <ul className="mt-10 grid gap-1">
             {links.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="block rounded-xl px-3 py-3 text-lg text-cream hover:bg-white/5" onClick={() => setOpen(false)}>
+                <Link href={link.href} className="block min-h-14 py-2 font-display text-4xl text-cream" onClick={() => setOpen(false)}>
                   {link.label}
                 </Link>
               </li>
             ))}
-            <li className="px-3 py-3">
-              {workspace ? <Link href={workspace} className="mb-3 block text-lg text-haze" onClick={() => setOpen(false)}>Workspace</Link> : null}
-              <ProfileMenu tone="dark" />
-            </li>
-            <li className="pt-2">
-              <Link href="/contact" className="block rounded-full bg-cream px-4 py-3 text-center font-semibold text-ink" onClick={() => setOpen(false)}>
-                Request a quote
-              </Link>
-            </li>
           </ul>
+          <div className="mt-auto pb-8">
+            {workspace ? <Link href={workspace} className="mb-4 block min-h-11 py-2 text-haze" onClick={() => setOpen(false)}>Workspace</Link> : null}
+            <ProfileMenu tone="dark" />
+            <Link href="/contact" className="mt-6 flex min-h-11 items-center justify-center rounded-full bg-cream px-4 font-semibold text-ink" onClick={() => setOpen(false)}>
+              Request a quote
+            </Link>
+          </div>
         </nav>
       ) : null}
-    </header>
+    </>
   );
 }
 
@@ -147,6 +171,7 @@ export function SiteFooter() {
             <li><Link className="hover:text-cream" href="/policies">Sales and refunds</Link></li>
             <li><Link className="hover:text-cream" href="/contact">Contact</Link></li>
             <li><Link className="hover:text-cream" href="/login">Client and dealer sign in</Link></li>
+            <li><Link className="hover:text-cream" href="/design">Design system</Link></li>
           </ul>
         </div>
       </div>

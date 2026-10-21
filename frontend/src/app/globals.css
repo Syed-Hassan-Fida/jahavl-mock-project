@@ -2,16 +2,18 @@
 
 @theme inline {
   --font-sans: var(--font-source), sans-serif;
-  --font-display: var(--font-barlow), sans-serif;
-  --color-ink: #14171c;
-  --color-night: #0c0e12;
-  --color-cream: #f3f0e8;
-  --color-paper: #faf8f4;
-  --color-mist: #5c6168;
-  --color-haze: #a8aeb6;
-  --color-line: #e2dcd0;
-  --color-copper: #b8611a;
-  --color-foam: #e7e2d6;
+  --font-display: var(--font-barlow), "Iowan Old Style", Georgia, serif;
+  --color-ink: #14161c;
+  --color-night: #0e1014;
+  --color-cream: #f7f4ee;
+  --color-paper: #ffffff;
+  --color-mist: #4e5562;
+  --color-haze: #a7aeb8;
+  --color-line: #e5dfd4;
+  --color-copper: #9a4510;
+  --color-ember: #e8b48a;
+  --color-foam: #f3efe6;
+  --color-canvas: #f3f0e8;
 }
 
 html {
@@ -28,14 +30,14 @@ h1,
 h2,
 h3,
 .display {
-  font-family: var(--font-barlow), sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 0.96;
+  font-family: var(--font-barlow), "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 
 ::selection {
-  background: #e7b07a;
+  background: #e8b48a;
   color: #1a120c;
 }
 
@@ -44,14 +46,33 @@ h3,
   outline-offset: 3px;
 }
 
+:is(.bg-night, .bg-\[\#08090c\], .bg-\[\#101216\]) :focus-visible {
+  outline-color: var(--color-ember);
+}
+
+:is(.bg-night, .bg-\[\#08090c\], .bg-\[\#101216\]) .text-copper {
+  color: var(--color-ember);
+}
+
 .field {
   width: 100%;
+  min-height: 44px;
   border: 1px solid var(--color-line);
   background: white;
   border-radius: 12px;
-  padding: 0.8rem 0.95rem;
+  padding: 0.7rem 0.95rem;
   color: var(--color-ink);
   font-size: 1rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.field::placeholder {
+  color: #6d7380;
+}
+
+.field[aria-invalid="true"] {
+  border-color: #9a4510;
+  box-shadow: 0 0 0 4px rgb(154 69 16 / 0.12);
 }
 
 .field:focus {
@@ -195,6 +216,108 @@ h3,
   transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+}
+
+.btn-primary {
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+
+.btn-primary:hover {
+  background: #000;
+}
+
+.btn-secondary {
+  border: 1px solid var(--color-line);
+  background: white;
+  color: var(--color-ink);
+}
+
+.btn-secondary:hover {
+  background: var(--color-foam);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.btn-ghost:hover {
+  background: var(--color-foam);
+}
+
+.panel {
+  background: white;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  box-shadow: 0 1px 1px rgb(20 22 28 / 0.04), 0 12px 32px rgb(20 22 28 / 0.045);
+  color: var(--color-ink);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.rounded-2xl.border-line.bg-paper,
+.rounded-3xl.border-line.bg-paper {
+  box-shadow: 0 1px 1px rgb(20 22 28 / 0.04), 0 12px 32px rgb(20 22 28 / 0.045);
+}
+
+.skeleton {
+  border-radius: 16px;
+  background: linear-gradient(90deg, #ebe6dc 0%, #f8f5ef 45%, #ebe6dc 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.workspace-tabbar {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rise {
+  animation: rise 480ms ease both;
+}
+
 .reveal {
   transition: opacity 700ms ease, transform 700ms ease;
 }
@@ -215,8 +338,17 @@ h3,
     transform: scale(1.12);
   }
 
-  .press:hover {
+  .press:hover,
+  .btn:hover {
     transform: translateY(-1px);
+  }
+
+  .modal-backdrop {
+    animation: fade 180ms ease;
+  }
+
+  .modal-panel {
+    animation: rise 220ms ease;
   }
 }
 
@@ -228,7 +360,16 @@ h3,
   #workspace-nav,
   .product-stage img,
   .press,
-  .reveal {
+  .reveal,
+  .btn,
+  .field {
     transition: none;
+  }
+
+  .skeleton,
+  .rise,
+  .modal-panel,
+  .modal-backdrop {
+    animation: none;
   }
 }
