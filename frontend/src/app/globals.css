@@ -46,6 +46,13 @@ h3,
   outline-offset: 3px;
 }
 
+/* Workspace header search: ring lives on the shell, never on the inner input */
+.workspace-search__input:focus,
+.workspace-search__input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 :is(.bg-night, .bg-\[\#08090c\], .bg-\[\#101216\]) :focus-visible {
   outline-color: var(--color-ember);
 }

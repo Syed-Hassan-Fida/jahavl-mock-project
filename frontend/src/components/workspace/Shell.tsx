@@ -318,16 +318,19 @@ function WorkspaceSearch() {
 
   return (
     <form ref={rootRef} onSubmit={go} className="relative min-w-0 flex-1">
-      <label className="flex h-11 items-center gap-2 rounded-xl border border-line bg-canvas px-3 transition-colors focus-within:border-ink focus-within:bg-white" htmlFor="workspace-search">
+      <label
+        className="workspace-search flex h-11 items-center gap-2 rounded-xl border border-line bg-canvas px-3 transition-[border-color,box-shadow,background-color] duration-150 focus-within:border-ink focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgb(20_23_28/0.08)]"
+        htmlFor="workspace-search"
+      >
         <span className="sr-only">Search quotes and products</span>
-        <Icon name="search" className="h-4 w-4 text-mist" />
+        <Icon name="search" className="h-4 w-4 shrink-0 text-mist" />
         <input
           id="workspace-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => hits.length && setOpen(true)}
           placeholder="Search quotes and products"
-          className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-mist"
+          className="workspace-search__input h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink shadow-none outline-none ring-0 placeholder:text-mist focus:outline-none focus:ring-0 focus-visible:outline-none"
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}

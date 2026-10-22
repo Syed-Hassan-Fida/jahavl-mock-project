@@ -76,7 +76,7 @@ function QuoteList() {
               <Link href={`/quotes/${quote.id}`} className="grid min-h-16 items-center gap-2 px-4 py-3 hover:bg-foam sm:grid-cols-[minmax(0,1.3fr)_auto_auto] sm:gap-4 sm:px-5">
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{quote.name}</span>
-                  <span className="mt-0.5 block text-sm text-mist">{quote.owner ?? "You"} · status {quote.status_code}{quote.checkout_allowed ? " · checkout open" : ""}</span>
+                  <span className="mt-0.5 block text-sm text-mist">{quote.owner ?? "You"}{quote.checkout_allowed ? " · checkout open" : ""}</span>
                 </span>
                 <StatusBadge status={quote.status} />
                 <span className="text-sm font-semibold tabular-nums sm:text-right">{money(quote.total)}</span>

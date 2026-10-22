@@ -162,23 +162,43 @@ export function Pager({
   const current = Math.min(page, pages);
   const start = total === 0 ? 0 : (current - 1) * pageSize + 1;
   const end = Math.min(total, current * pageSize);
+  const control =
+    "inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink transition-colors hover:bg-foam disabled:pointer-events-none disabled:opacity-35";
+
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-      <p className="text-mist">{total === 0 ? "0 results" : `${start}–${end} of ${total}`}</p>
+    <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm tabular-nums text-mist">{total === 0 ? "0 results" : `${start}–${end} of ${total}`}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-mist">
-          Page size
-          <select className="field h-11 w-auto py-0" value={pageSize} onChange={(event) => { onPageSize(Number(event.target.value)); onPage(1); }}>
-            {[10, 25, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+        <label className="flex h-9 items-center gap-2 rounded-lg border border-line bg-white pl-3 pr-1.5 text-sm text-mist">
+          <span className="whitespace-nowrap">Rows</span>
+          <select
+            className="h-7 min-w-[3.25rem] cursor-pointer appearance-none border-0 bg-transparent py-0 pr-5 text-sm font-medium text-ink outline-none focus:outline-none focus-visible:outline-none"
+            style={{ backgroundImage: "none" }}
+            value={pageSize}
+            onChange={(event) => {
+              onPageSize(Number(event.target.value));
+              onPage(1);
+            }}
+            aria-label="Rows per page"
+          >
+            {[10, 25, 50].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
           </select>
         </label>
-        <button type="button" className="btn btn-secondary" disabled={current <= 1} onClick={() => onPage(current - 1)}>Previous</button>
-        <label className="flex items-center gap-2 text-mist">
-          Page
-          <input className="field h-11 w-16 py-0 text-center" type="number" min={1} max={pages} value={current} onChange={(event) => onPage(Math.min(pages, Math.max(1, Number(event.target.value) || 1)))} aria-label="Jump to page" />
-          <span>of {pages}</span>
-        </label>
-        <button type="button" className="btn btn-secondary" disabled={current >= pages} onClick={() => onPage(current + 1)}>Next</button>
+        <div className="flex items-center gap-1">
+          <button type="button" className={`${control} min-w-9 px-2.5`} disabled={current <= 1} onClick={() => onPage(current - 1)} aria-label="Previous page">
+            Prev
+          </button>
+          <span className="min-w-[4.5rem] px-2 text-center text-sm tabular-nums text-mist" aria-live="polite">
+            {current} <span className="opacity-40">/</span> {pages}
+          </span>
+          <button type="button" className={`${control} min-w-9 px-2.5`} disabled={current >= pages} onClick={() => onPage(current + 1)} aria-label="Next page">
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
