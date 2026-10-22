@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { api, formBody, media, money, onLive, openPdf, setToken, startLivePolling } from "./api";
+import { api, formBody, media, money, onLive, openPdf, setToken, setUnauthorizedHandler, startLivePolling } from "./api";
 import { Admin } from "./Admin";
 import { Support } from "./Support";
+import { clearSession, loadSession, saveSession } from "./session";
+import { color, hit, radius, space } from "./theme";
 
 type Tab = "Catalog" | "Quotes" | "Service" | "Account" | "Admin";
 type User = { id: number; name: string; email: string; role: string };
@@ -23,10 +26,31 @@ type Person = { id: number; name: string; role: string };
 type CatalogHit = { id: number; name: string; list_price: string };
 
 export default function JahApp() {
+  const insets = useSafeAreaInsets();
+  const [ready, setReady] = useState(false);
+  const [guest, setGuest] = useState(false);
   const [tab, setTab] = useState<Tab>("Catalog");
   const [user, setUser] = useState<User | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [liveVersion, setLiveVersion] = useState(0);
+
+  useEffect(() => {
+    loadSession().then((session) => {
+      if (session) {
+        setToken(session.token);
+        setUser(session.user);
+        setNotice(null);
+      }
+      setReady(true);
+    });
+    setUnauthorizedHandler(() => {
+      setToken("");
+      clearSession();
+      setUser(null);
+      setGuest(false);
+      setNotice("Your session expired. Sign in again.");
+    });
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -43,8 +67,38 @@ export default function JahApp() {
     };
   }, [user]);
 
+  // Dev-only: walk tabs so simulator screenshots can capture each feature surface.
+  useEffect(() => {
+    if (!__DEV__ || !user || process.env.EXPO_PUBLIC_CYCLE_TABS !== "1") return;
+    const order = (["Catalog", "Quotes", "Service", "Account", "Admin"] as Tab[]).filter(
+      (name) => name !== "Admin" || user.role === "admin" || user.role === "sales",
+    );
+    let index = 0;
+    setTab(order[0]);
+    const timer = setInterval(() => {
+      index = (index + 1) % order.length;
+      setTab(order[index]);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [user]);
+
+  if (!ready) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <Text style={styles.brand}>JAH AUDIO</Text>
+        <Text style={styles.meta}>Opening your workspace…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user && !guest) {
+    return <Login onSignedIn={(next) => { setUser(next); setNotice(null); }} onBrowse={() => setGuest(true)} notice={notice} />;
+  }
+
+  const tabs = (["Catalog", "Quotes", "Service", "Account"] as Tab[]).concat(user && (user.role === "admin" || user.role === "sales") ? ["Admin"] : []);
+
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <Text style={styles.brand}>JAH AUDIO</Text>
       <Text style={styles.word}>{tab}</Text>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -52,17 +106,73 @@ export default function JahApp() {
         {tab === "Catalog" ? <Catalog onNotice={setNotice} signedIn={!!user} /> : null}
         {tab === "Quotes" ? <Quotes signedIn={!!user} onNotice={setNotice} /> : null}
         {tab === "Service" ? (user ? <Support user={user} liveVersion={liveVersion} onNotice={setNotice} /> : <Text style={styles.meta}>Sign in to open tickets, messages, and alerts.</Text>) : null}
-        {tab === "Account" ? <Account user={user} setUser={setUser} onNotice={setNotice} /> : null}
+        {tab === "Account" ? <Account user={user} setUser={setUser} onNotice={setNotice} onRequestSignIn={() => setGuest(false)} /> : null}
         {tab === "Admin" ? (user && (user.role === "admin" || user.role === "sales") ? <Admin role={user.role} onNotice={setNotice} /> : <Text style={styles.meta}>Sign in as admin or sales.</Text>) : null}
       </View>
-      <View style={styles.tabs}>
-        {(["Catalog", "Quotes", "Service", "Account"] as Tab[]).concat(user && (user.role === "admin" || user.role === "sales") ? ["Admin"] : []).map((name) => (
-          <Pressable key={name} onPress={() => setTab(name)} style={styles.tab}>
+      <View style={[styles.tabs, { paddingBottom: Math.max(insets.bottom, space.md) + space.sm }]}>
+        {tabs.map((name) => (
+          <Pressable key={name} onPress={() => setTab(name)} style={styles.tab} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} accessibilityLabel={name}>
             <Text style={tab === name ? styles.tabOn : styles.tabOff}>{name}</Text>
           </Pressable>
         ))}
       </View>
-    </View>
+    </SafeAreaView>
+  );
+}
+
+function Login({ onSignedIn, onBrowse, notice }: { onSignedIn: (user: User) => void; onBrowse: () => void; notice: string | null }) {
+  const autoEmail = process.env.EXPO_PUBLIC_AUTO_LOGIN_EMAIL ?? "";
+  const autoPassword = process.env.EXPO_PUBLIC_AUTO_LOGIN_PASSWORD ?? "";
+  const [email, setEmail] = useState(autoEmail);
+  const [password, setPassword] = useState(autoPassword);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const autoTried = useRef(false);
+
+  async function submit(nextEmail = email, nextPassword = password) {
+    if (!nextEmail.includes("@") || nextPassword.length < 8) {
+      setError("Enter the email and password you were given.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const body = await api<{ token: string; user: User }>("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ email: nextEmail.trim(), password: nextPassword }) });
+      setToken(body.token);
+      await saveSession(body.token, body.user);
+      onSignedIn(body.user);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Sign-in failed. Check the connection and try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!__DEV__ || autoTried.current || !autoEmail || !autoPassword) return;
+    autoTried.current = true;
+    void submit(autoEmail, autoPassword);
+  }, [autoEmail, autoPassword]);
+
+  return (
+    <SafeAreaView style={styles.login}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, justifyContent: "center" }}>
+        <Text style={styles.brandLight}>JAH AUDIO</Text>
+        <Text style={styles.loginTitle}>Sign in</Text>
+        <Text style={styles.loginCopy}>Quotes, service, and the pipeline for your role.</Text>
+        {notice ? <Text style={styles.noticeDark}>{notice}</Text> : null}
+        {error ? <Text style={styles.noticeDark} accessibilityRole="alert">{error}</Text> : null}
+        <TextInput style={styles.input} autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor="#a7aeb8" accessibilityLabel="Email" />
+        <TextInput style={styles.input} secureTextEntry autoComplete="password" value={password} onChangeText={setPassword} placeholder="Password" placeholderTextColor="#a7aeb8" accessibilityLabel="Password" />
+        <Pressable style={styles.button} onPress={submit} disabled={pending} accessibilityRole="button" accessibilityLabel="Sign in">
+          <Text style={styles.buttonText}>{pending ? "Signing in…" : "Sign in"}</Text>
+        </Pressable>
+        <Pressable style={styles.ghostLight} onPress={onBrowse} accessibilityRole="button" accessibilityLabel="Browse the catalog without signing in">
+          <Text style={styles.ghostLightText}>Browse the catalog</Text>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -170,7 +280,7 @@ function Catalog({ onNotice, signedIn }: { onNotice: (value: string | null) => v
 
   async function save(product: Product, type: "quote" | "wishlist") {
     if (!signedIn) {
-      onNotice("Sign in on the Account tab before building a quote.");
+      onNotice("Sign in from the Account tab before building a quote.");
       return;
     }
     const body = await api<{ quote: { id: number } }>("/api/v1/quotes", { method: "POST", body: JSON.stringify({ name: product.name, type, product_id: product.id, quantity: 1 }) });
@@ -399,9 +509,7 @@ function Quotes({ signedIn, onNotice }: { signedIn: boolean; onNotice: (value: s
   );
 }
 
-function Account({ user, setUser, onNotice }: { user: User | null; setUser: (user: User | null) => void; onNotice: (value: string | null) => void }) {
-  const [email, setEmail] = useState("client@example.com");
-  const [password, setPassword] = useState("password");
+function Account({ user, setUser, onNotice, onRequestSignIn }: { user: User | null; setUser: (user: User | null) => void; onNotice: (value: string | null) => void; onRequestSignIn: () => void }) {
   const [last4, setLast4] = useState("");
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState("");
@@ -418,14 +526,6 @@ function Account({ user, setUser, onNotice }: { user: User | null; setUser: (use
   const [nextPassword, setNextPassword] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const staff = user?.role === "admin" || user?.role === "sales";
-
-  async function login() {
-    const body = await api<{ token: string; user: User }>("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-    setToken(body.token);
-    setUser(body.user);
-    onNotice(`Signed in as ${body.user.role}.`);
-    setName(body.user.name);
-  }
 
   useEffect(() => {
     if (!user) return;
@@ -446,12 +546,10 @@ function Account({ user, setUser, onNotice }: { user: User | null; setUser: (use
 
   if (!user) {
     return (
-      <ScrollView>
-        <TextInput style={styles.input} autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="Email" />
-        <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} placeholder="Password" />
-        <Pressable style={styles.button} onPress={() => login().catch((error: Error) => onNotice(error.message))}><Text style={styles.buttonText}>Sign in</Text></Pressable>
-        <Text style={styles.meta}>client, dealer, sales, and admin share the password “password”.</Text>
-      </ScrollView>
+      <View>
+        <Text style={styles.meta}>Sign in to save quotes, payments, and service.</Text>
+        <Pressable style={styles.button} onPress={onRequestSignIn} accessibilityRole="button"><Text style={styles.buttonText}>Sign in</Text></Pressable>
+      </View>
     );
   }
 
@@ -537,9 +635,10 @@ function Account({ user, setUser, onNotice }: { user: User | null; setUser: (use
           ))}
         </>
       ) : null}
-      <Pressable onPress={async () => {
+      <Pressable style={styles.tab} accessibilityRole="button" accessibilityLabel="Sign out" onPress={async () => {
         await api("/api/v1/auth/logout", { method: "POST" }).catch(() => undefined);
         setToken("");
+        await clearSession();
         setUser(null);
       }}><Text style={styles.link}>Sign out</Text></Pressable>
     </ScrollView>
@@ -547,35 +646,49 @@ function Account({ user, setUser, onNotice }: { user: User | null; setUser: (use
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f3f0e8", paddingTop: 54, paddingHorizontal: 16 },
-  brand: { color: "#b8611a", letterSpacing: 3, fontSize: 12, fontWeight: "700" },
-  word: { color: "#14171c", fontSize: 40, fontWeight: "600", marginBottom: 8 },
-  heading: { color: "#14171c", fontSize: 28, fontWeight: "600", marginVertical: 8 },
+  screen: { flex: 1, backgroundColor: color.canvas, paddingHorizontal: space.lg },
+  login: { flex: 1, backgroundColor: color.night, paddingHorizontal: space.xl },
+  brand: { color: color.copper, letterSpacing: 3, fontSize: 12, fontWeight: "700" },
+  brandLight: { color: "#e8b48a", letterSpacing: 3, fontSize: 12, fontWeight: "700" },
+  word: { color: color.ink, fontSize: 34, fontWeight: "600", marginBottom: space.sm },
+  loginTitle: { color: color.cream, fontSize: 40, fontWeight: "600", marginTop: space.md },
+  loginCopy: { color: "#a7aeb8", fontSize: 16, marginTop: space.sm, marginBottom: space.md },
+  heading: { color: color.ink, fontSize: 28, fontWeight: "600", marginVertical: space.sm },
   body: { flex: 1 },
-  card: { backgroundColor: "#faf8f4", borderColor: "#e2dcd0", borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: color.paper, borderColor: color.line, borderWidth: 1, borderRadius: radius.lg, padding: 14, marginBottom: 10 },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  tile: { width: "48%", aspectRatio: 1, borderRadius: 18, overflow: "hidden", backgroundColor: "#2a313b", marginBottom: 10, justifyContent: "flex-end" },
+  tile: { width: "48%", aspectRatio: 1, borderRadius: radius.lg, overflow: "hidden", backgroundColor: "#2a313b", marginBottom: 10, justifyContent: "flex-end" },
   tileImage: { position: "absolute", top: 8, right: 8, bottom: 48, left: 8, resizeMode: "contain" },
   tileCopy: { padding: 10, backgroundColor: "rgba(8,9,12,0.78)" },
-  tileName: { color: "#f3f0e8", fontSize: 16, fontWeight: "700" },
+  tileName: { color: color.cream, fontSize: 16, fontWeight: "700" },
   tileMeta: { color: "#c5c8ce", fontSize: 12, marginTop: 2 },
-  plan: { marginBottom: 8 },
-  planRow: { flexDirection: "row", gap: 8, marginTop: 8 },
-  planStat: { flex: 1, backgroundColor: "#faf8f4", borderRadius: 12, padding: 8 },
-  stepper: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  name: { color: "#14171c", fontSize: 18, fontWeight: "600" },
-  meta: { color: "#5c6168", marginTop: 4 },
-  kicker: { marginTop: 12, marginBottom: 6, color: "#b8611a", fontWeight: "700", letterSpacing: 1 },
-  avatar: { width: 72, height: 72, borderRadius: 36, marginTop: 8, backgroundColor: "#e7e2d6" },
-  notice: { backgroundColor: "#faf8f4", color: "#14171c", padding: 10, borderRadius: 12, marginBottom: 8 },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
-  button: { backgroundColor: "#14171c", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8, alignSelf: "flex-start" },
-  buttonText: { color: "#f3f0e8", fontWeight: "700" },
-  ghost: { borderColor: "#14171c33", borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8, alignSelf: "flex-start" },
-  link: { color: "#b8611a", fontWeight: "700", marginVertical: 8 },
-  input: { backgroundColor: "white", borderColor: "#e2dcd0", borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 8 },
-  tabs: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#e2dcd0", paddingVertical: 10 },
-  tab: { flex: 1, alignItems: "center" },
-  tabOn: { color: "#14171c", fontWeight: "700" },
-  tabOff: { color: "#5c6168" },
+  plan: { marginBottom: space.sm },
+  planRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
+  planStat: { flex: 1, backgroundColor: color.paper, borderRadius: radius.md, padding: space.sm },
+  stepper: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space.sm },
+  name: { color: color.ink, fontSize: 18, fontWeight: "600" },
+  meta: { color: color.mist, marginTop: space.xs },
+  kicker: { marginTop: space.md, marginBottom: space.sm, color: color.copper, fontWeight: "700", letterSpacing: 1 },
+  avatar: { width: 72, height: 72, borderRadius: 36, marginTop: space.sm, backgroundColor: color.foam },
+  notice: { backgroundColor: color.paper, color: color.ink, padding: space.md, borderRadius: radius.md, marginBottom: space.sm },
+  noticeDark: { backgroundColor: "#1a120c", color: color.cream, padding: space.md, borderRadius: radius.md, marginBottom: space.sm },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm },
+  button: { backgroundColor: color.ink, borderRadius: radius.pill, minHeight: hit, paddingHorizontal: space.lg, justifyContent: "center", marginTop: space.sm, alignSelf: "flex-start" },
+  buttonText: { color: color.cream, fontWeight: "700" },
+  ghost: { borderColor: "#14161c33", borderWidth: 1, borderRadius: radius.pill, minHeight: hit, paddingHorizontal: space.lg, justifyContent: "center", marginTop: space.sm, alignSelf: "flex-start" },
+  ghostLight: { borderColor: "rgba(247,244,238,0.35)", borderWidth: 1, borderRadius: radius.pill, minHeight: hit, paddingHorizontal: space.lg, justifyContent: "center", marginTop: space.sm, alignSelf: "flex-start" },
+  ghostLightText: { color: color.cream, fontWeight: "700" },
+  link: { color: color.copper, fontWeight: "700", marginVertical: space.sm },
+  input: { backgroundColor: color.paper, borderColor: color.line, borderWidth: 1, borderRadius: radius.md, minHeight: hit, paddingHorizontal: space.md, marginTop: space.sm, color: color.ink },
+  tabs: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderTopWidth: 1,
+    borderTopColor: color.line,
+    backgroundColor: color.canvas,
+    paddingTop: space.sm,
+  },
+  tab: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: hit, paddingHorizontal: space.xs },
+  tabOn: { color: color.ink, fontWeight: "700", fontSize: 12 },
+  tabOff: { color: color.mist, fontSize: 12 },
 });

@@ -174,8 +174,8 @@ function Notes({ onNotice }: { onNotice: (value: string | null) => void }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
-  on: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#14171c" },
-  off: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#faf8f4" },
+  on: { borderRadius: 999, minHeight: 48, paddingHorizontal: 14, justifyContent: "center", backgroundColor: "#14161c" },
+  off: { borderRadius: 999, minHeight: 48, paddingHorizontal: 14, justifyContent: "center", backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e5dfd4" },
   onText: { color: "#f3f0e8", fontWeight: "700" },
   offText: { color: "#5c6168", fontWeight: "700" },
   card: { backgroundColor: "#faf8f4", borderColor: "#e2dcd0", borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 10 },
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   meta: { color: "#5c6168", marginTop: 4 },
   link: { color: "#b8611a", fontWeight: "700", marginTop: 8, marginRight: 12 },
   kicker: { marginTop: 8, marginBottom: 6, color: "#b8611a", fontWeight: "700", letterSpacing: 1 },
-  button: { backgroundColor: "#14171c", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8, alignSelf: "flex-start" },
+  button: { backgroundColor: "#14161c", borderRadius: 999, minHeight: 48, paddingHorizontal: 16, justifyContent: "center", marginTop: 8, alignSelf: "flex-start" },
   buttonText: { color: "#f3f0e8", fontWeight: "700" },
-  input: { backgroundColor: "white", borderColor: "#e2dcd0", borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 8 },
+  input: { backgroundColor: "white", borderColor: "#e5dfd4", borderWidth: 1, borderRadius: 12, minHeight: 48, paddingHorizontal: 12, marginTop: 8, color: "#14161c" },
 });

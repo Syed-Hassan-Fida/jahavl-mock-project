@@ -1,8 +1,9 @@
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
-export const API_URL = "https://jahavl.hivelyhr.com";
-export const WEB_URL = "https://jahavl.hivelyhr.com";
+// iOS Simulator reaches the Mac host via 127.0.0.1
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+export const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? "http://127.0.0.1:3000";
 
 export function media(path?: string | null) {
   if (!path) return null;
@@ -66,9 +67,14 @@ export function idempotencyKey() {
 }
 
 let token = "";
+let onUnauthorized: (() => void) | null = null;
 
 export function setToken(value: string) {
   token = value;
+}
+
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler;
 }
 
 export function getToken() {
@@ -85,6 +91,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   const text = await response.text();
   const body = text ? JSON.parse(text) : {};
+  if (response.status === 401 && token) {
+    onUnauthorized?.();
+  }
   if (!response.ok) {
     const errors = body.errors as Record<string, string[]> | undefined;
     throw new Error(body.message || errors?.[Object.keys(errors)[0]]?.[0] || "Request failed");
